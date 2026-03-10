@@ -34,7 +34,7 @@ const Admin = () => {
           .select("role")
           .eq("user_id", user.id)
           .eq("role", "admin")
-          .single();
+          .maybeSingle();
         setIsAdmin(!!data && !error);
         if (!data || error) {
           toast.error("Access denied. Admin role required.");

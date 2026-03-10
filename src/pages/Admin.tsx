@@ -323,7 +323,8 @@ const Admin = () => {
               className="bg-secondary border border-border rounded-lg px-3 py-2 text-foreground text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
             <Button onClick={handleSetPrediction} className="font-semibold">
-              Set Crash Point
+              Set Prediction
+            </Button>
             </Button>
             <Button onClick={handleClearPrediction} variant="outline" className="font-semibold" disabled={activePrediction === null}>
               Clear

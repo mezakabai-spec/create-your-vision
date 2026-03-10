@@ -102,14 +102,19 @@ export function useCrashGame() {
     }
   };
 
-  const getNextCrashPoint = () => {
-    // Admin override takes priority, then clears after use
+  const getNextCrashPoint = async () => {
+    // Admin override from window event takes priority
     if (adminCrashPointRef.current !== null) {
       const cp = adminCrashPointRef.current;
       adminCrashPointRef.current = null;
-      // Notify admin UI that prediction was consumed
       window.dispatchEvent(new CustomEvent("admin-prediction-consumed"));
       return cp;
+    }
+    // Then check DB for admin-set crash point
+    const dbCp = await checkAdminCrashPoint();
+    if (dbCp !== null) {
+      window.dispatchEvent(new CustomEvent("admin-prediction-consumed"));
+      return dbCp;
     }
     ensureCrashQueue();
     return crashQueueRef.current.shift()!;

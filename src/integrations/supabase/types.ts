@@ -14,6 +14,114 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_crash_settings: {
+        Row: {
+          consumed: boolean | null
+          id: string
+          next_crash_point: number | null
+          set_at: string | null
+          set_by: string | null
+        }
+        Insert: {
+          consumed?: boolean | null
+          id?: string
+          next_crash_point?: number | null
+          set_at?: string | null
+          set_by?: string | null
+        }
+        Update: {
+          consumed?: boolean | null
+          id?: string
+          next_crash_point?: number | null
+          set_at?: string | null
+          set_by?: string | null
+        }
+        Relationships: []
+      }
+      balances: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      bet_history: {
+        Row: {
+          bet_amount: number
+          cashout_multiplier: number | null
+          crashed: boolean | null
+          created_at: string | null
+          id: string
+          profit: number
+          user_id: string
+        }
+        Insert: {
+          bet_amount: number
+          cashout_multiplier?: number | null
+          crashed?: boolean | null
+          created_at?: string | null
+          id?: string
+          profit?: number
+          user_id: string
+        }
+        Update: {
+          bet_amount?: number
+          cashout_multiplier?: number | null
+          crashed?: boolean | null
+          created_at?: string | null
+          id?: string
+          profit?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      leaderboard_entries: {
+        Row: {
+          best_multiplier: number
+          created_at: string | null
+          date: string
+          id: string
+          total_winnings: number
+          user_id: string
+          username: string
+        }
+        Insert: {
+          best_multiplier?: number
+          created_at?: string | null
+          date?: string
+          id?: string
+          total_winnings?: number
+          user_id: string
+          username: string
+        }
+        Update: {
+          best_multiplier?: number
+          created_at?: string | null
+          date?: string
+          id?: string
+          total_winnings?: number
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
       price_alerts: {
         Row: {
           alert_type: string
@@ -54,6 +162,7 @@ export type Database = {
           preferred_currency: string | null
           updated_at: string
           user_id: string
+          username: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -64,6 +173,7 @@ export type Database = {
           preferred_currency?: string | null
           updated_at?: string
           user_id: string
+          username?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -74,6 +184,7 @@ export type Database = {
           preferred_currency?: string | null
           updated_at?: string
           user_id?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -116,15 +227,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -251,6 +386,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const

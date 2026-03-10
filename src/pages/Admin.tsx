@@ -115,6 +115,25 @@ const Admin = () => {
     return () => clearInterval(interval);
   }, [isAdmin]);
 
+  const handleSetPrediction = () => {
+    const val = parseFloat(predictionValue);
+    if (isNaN(val) || val < 1.0) {
+      toast.error("Crash point must be at least 1.00");
+      return;
+    }
+    const rounded = Math.round(val * 100) / 100;
+    setPredictionQueue(prev => [...prev, rounded]);
+    window.dispatchEvent(new CustomEvent("admin-set-crash-point", { detail: { crashPoint: rounded } }));
+    toast.success(`Crash point ${rounded.toFixed(2)}x queued for next round`);
+    setPredictionValue("");
+  };
+
+  const handleClearPredictions = () => {
+    setPredictionQueue([]);
+    window.dispatchEvent(new CustomEvent("admin-clear-crash-points"));
+    toast.success("Prediction queue cleared");
+  };
+
   const handleCreditUser = async () => {
     if (!creditUserId || !creditAmount) {
       toast.error("Enter user ID and amount");
@@ -126,26 +145,44 @@ const Admin = () => {
       return;
     }
 
-    const { data: existing } = await supabase
-      .from("balances")
-      .select("amount")
-      .eq("user_id", creditUserId)
-      .single();
+    try {
+      const { data: existing } = await supabase
+        .from("balances")
+        .select("amount")
+        .eq("user_id", creditUserId)
+        .maybeSingle();
 
-    if (existing) {
-      await supabase
-        .from("balances")
-        .update({ amount: Number(existing.amount) + amount })
-        .eq("user_id", creditUserId);
-    } else {
-      await supabase
-        .from("balances")
-        .insert({ user_id: creditUserId, amount });
+      if (existing) {
+        const { error } = await supabase
+          .from("balances")
+          .update({ amount: Number(existing.amount) + amount })
+          .eq("user_id", creditUserId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("balances")
+          .insert({ user_id: creditUserId, amount });
+        if (error) throw error;
+      }
+
+      toast.success(`Credited KES ${amount} to user`);
+      setCreditUserId("");
+      setCreditAmount("");
+
+      // Refresh user list to show updated balance
+      const { data: profiles } = await supabase.from("profiles").select("user_id, username");
+      const { data: balances } = await supabase.from("balances").select("user_id, amount");
+      if (profiles) {
+        const balanceMap = new Map((balances || []).map(b => [b.user_id, Number(b.amount)]));
+        setAllUsers(profiles.map(p => ({
+          user_id: p.user_id,
+          username: p.username || "Unknown",
+          amount: balanceMap.get(p.user_id) || 0,
+        })));
+      }
+    } catch (err: any) {
+      toast.error(`Failed to credit: ${err.message}`);
     }
-
-    toast.success(`Credited KES ${amount} to user`);
-    setCreditUserId("");
-    setCreditAmount("");
   };
 
   if (loading || checkingRole) {

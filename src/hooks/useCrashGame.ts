@@ -72,20 +72,49 @@ export function useCrashGame() {
     };
   }, []);
 
+  // Check DB for admin-set crash point before each round
+  const checkAdminCrashPoint = useCallback(async (): Promise<number | null> => {
+    try {
+      const { data } = await (supabase as any)
+        .from("admin_crash_settings")
+        .select("id, next_crash_point")
+        .eq("consumed", false)
+        .order("set_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data && data.next_crash_point) {
+        // Mark as consumed
+        await (supabase as any)
+          .from("admin_crash_settings")
+          .update({ consumed: true })
+          .eq("id", data.id);
+        return Number(data.next_crash_point);
+      }
+    } catch (err) {
+      console.error("[CrashGame] Failed to check admin crash point:", err);
+    }
+    return null;
+  }, []);
+
   const ensureCrashQueue = () => {
     while (crashQueueRef.current.length < 6) {
       crashQueueRef.current.push(generateCrashPoint());
     }
   };
 
-  const getNextCrashPoint = () => {
-    // Admin override takes priority, then clears after use
+  const getNextCrashPoint = async () => {
+    // Admin override from window event takes priority
     if (adminCrashPointRef.current !== null) {
       const cp = adminCrashPointRef.current;
       adminCrashPointRef.current = null;
-      // Notify admin UI that prediction was consumed
       window.dispatchEvent(new CustomEvent("admin-prediction-consumed"));
       return cp;
+    }
+    // Then check DB for admin-set crash point
+    const dbCp = await checkAdminCrashPoint();
+    if (dbCp !== null) {
+      window.dispatchEvent(new CustomEvent("admin-prediction-consumed"));
+      return dbCp;
     }
     ensureCrashQueue();
     return crashQueueRef.current.shift()!;
@@ -200,10 +229,10 @@ export function useCrashGame() {
       ch.send({ type: "broadcast", event: "phase", payload: { phase: "waiting" } });
 
       // Phase 2: Running after wait
-      const t1 = setTimeout(() => {
+      const t1 = setTimeout(async () => {
         if (!isLeaderRef.current || !mountedRef.current) return;
 
-        const cp = getNextCrashPoint();
+        const cp = await getNextCrashPoint();
         const startTime = Date.now();
 
         ch.send({ type: "broadcast", event: "phase", payload: { phase: "running", startTime } });

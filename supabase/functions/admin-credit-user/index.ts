@@ -1,5 +1,4 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,7 +26,10 @@ Deno.serve(async (req) => {
     }
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!).auth.getUser(token);
+    const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: authError } = await userClient.auth.getUser(token);
 
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -67,20 +69,23 @@ Deno.serve(async (req) => {
       .eq("user_id", target_user_id)
       .maybeSingle();
 
+    let newBalance: number;
     if (existing) {
+      newBalance = Number(existing.amount) + amount;
       const { error } = await supabaseAdmin
         .from("balances")
-        .update({ amount: Number(existing.amount) + amount })
+        .update({ amount: newBalance })
         .eq("user_id", target_user_id);
       if (error) throw error;
     } else {
+      newBalance = amount;
       const { error } = await supabaseAdmin
         .from("balances")
         .insert({ user_id: target_user_id, amount });
       if (error) throw error;
     }
 
-    return new Response(JSON.stringify({ success: true, new_balance: existing ? Number(existing.amount) + amount : amount }), {
+    return new Response(JSON.stringify({ success: true, new_balance: newBalance }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {

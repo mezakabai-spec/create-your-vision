@@ -14,26 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_crash_settings: {
+        Row: {
+          consumed: boolean | null
+          id: string
+          next_crash_point: number | null
+          set_at: string | null
+          set_by: string | null
+        }
+        Insert: {
+          consumed?: boolean | null
+          id?: string
+          next_crash_point?: number | null
+          set_at?: string | null
+          set_by?: string | null
+        }
+        Update: {
+          consumed?: boolean | null
+          id?: string
+          next_crash_point?: number | null
+          set_at?: string | null
+          set_by?: string | null
+        }
+        Relationships: []
+      }
       balances: {
         Row: {
           amount: number
-          created_at: string
+          created_at: string | null
           id: string
-          updated_at: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
           amount?: number
-          created_at?: string
+          created_at?: string | null
           id?: string
-          updated_at?: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
           amount?: number
-          created_at?: string
+          created_at?: string | null
           id?: string
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
@@ -42,8 +66,8 @@ export type Database = {
         Row: {
           bet_amount: number
           cashout_multiplier: number | null
-          crashed: boolean
-          created_at: string
+          crashed: boolean | null
+          created_at: string | null
           id: string
           profit: number
           user_id: string
@@ -51,8 +75,8 @@ export type Database = {
         Insert: {
           bet_amount: number
           cashout_multiplier?: number | null
-          crashed?: boolean
-          created_at?: string
+          crashed?: boolean | null
+          created_at?: string | null
           id?: string
           profit?: number
           user_id: string
@@ -60,8 +84,8 @@ export type Database = {
         Update: {
           bet_amount?: number
           cashout_multiplier?: number | null
-          crashed?: boolean
-          created_at?: string
+          crashed?: boolean | null
+          created_at?: string | null
           id?: string
           profit?: number
           user_id?: string
@@ -71,7 +95,7 @@ export type Database = {
       leaderboard_entries: {
         Row: {
           best_multiplier: number
-          created_at: string
+          created_at: string | null
           date: string
           id: string
           total_winnings: number
@@ -79,8 +103,8 @@ export type Database = {
           username: string
         }
         Insert: {
-          best_multiplier: number
-          created_at?: string
+          best_multiplier?: number
+          created_at?: string | null
           date?: string
           id?: string
           total_winnings?: number
@@ -89,7 +113,7 @@ export type Database = {
         }
         Update: {
           best_multiplier?: number
-          created_at?: string
+          created_at?: string | null
           date?: string
           id?: string
           total_winnings?: number
@@ -98,33 +122,126 @@ export type Database = {
         }
         Relationships: []
       }
+      price_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          target_price: number
+          triggered_at: string | null
+          user_id: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          target_price: number
+          triggered_at?: string | null
+          user_id: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          target_price?: number
+          triggered_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
           display_name: string | null
           id: string
-          phone_number: string | null
+          notification_enabled: boolean | null
+          preferred_currency: string | null
           updated_at: string
           user_id: string
           username: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
-          phone_number?: string | null
+          notification_enabled?: boolean | null
+          preferred_currency?: string | null
           updated_at?: string
           user_id: string
           username?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
-          phone_number?: string | null
+          notification_enabled?: boolean | null
+          preferred_currency?: string | null
           updated_at?: string
           user_id?: string
           username?: string | null
+        }
+        Relationships: []
+      }
+      signal_history: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          entry_price: number
+          id: string
+          result_pips: number | null
+          signal_type: string
+          status: string | null
+          stop_loss: number | null
+          target_price: number
+          user_id: string
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          entry_price: number
+          id?: string
+          result_pips?: number | null
+          signal_type: string
+          status?: string | null
+          stop_loss?: number | null
+          target_price: number
+          user_id: string
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          entry_price?: number
+          id?: string
+          result_pips?: number | null
+          signal_type?: string
+          status?: string | null
+          stop_loss?: number | null
+          target_price?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -133,10 +250,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -263,6 +386,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const

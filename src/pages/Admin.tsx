@@ -76,6 +76,24 @@ const Admin = () => {
     return () => window.removeEventListener("admin-prediction-consumed", handler);
   }, []);
 
+  // Load active crash point from DB on mount
+  useEffect(() => {
+    if (!isAdmin) return;
+    const loadActive = async () => {
+      const { data } = await (supabase as any)
+        .from("admin_crash_settings")
+        .select("next_crash_point")
+        .eq("consumed", false)
+        .order("set_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data?.next_crash_point) {
+        setActivePrediction(Number(data.next_crash_point));
+      }
+    };
+    loadActive();
+  }, [isAdmin]);
+
   useEffect(() => {
     if (!isAdmin) return;
     const fetchData = async () => {
@@ -122,23 +140,52 @@ const Admin = () => {
     return () => clearInterval(interval);
   }, [isAdmin]);
 
-  const handleSetPrediction = () => {
+  const handleSetPrediction = async () => {
     const val = parseFloat(predictionValue);
     if (isNaN(val) || val < 1.0) {
       toast.error("Crash point must be at least 1.00");
       return;
     }
     const rounded = Math.round(val * 100) / 100;
-    setActivePrediction(rounded);
-    window.dispatchEvent(new CustomEvent("admin-set-crash-point", { detail: { crashPoint: rounded } }));
-    toast.success(`Next round will crash at ${rounded.toFixed(2)}x`);
-    setPredictionValue("");
+    
+    // Save to DB so the game hook picks it up
+    try {
+      // Clear any existing unconsumed settings first
+      await (supabase as any)
+        .from("admin_crash_settings")
+        .update({ consumed: true })
+        .eq("consumed", false);
+      
+      // Insert new crash point
+      const { error } = await (supabase as any)
+        .from("admin_crash_settings")
+        .insert({ next_crash_point: rounded, set_by: user?.id });
+      
+      if (error) throw error;
+      
+      setActivePrediction(rounded);
+      // Also dispatch window event for same-tab leader
+      window.dispatchEvent(new CustomEvent("admin-set-crash-point", { detail: { crashPoint: rounded } }));
+      toast.success(`Next round will crash at ${rounded.toFixed(2)}x`);
+      setPredictionValue("");
+    } catch (err: any) {
+      toast.error(`Failed to set crash point: ${err.message}`);
+    }
   };
 
-  const handleClearPrediction = () => {
-    setActivePrediction(null);
-    window.dispatchEvent(new CustomEvent("admin-clear-crash-points"));
-    toast.success("Prediction cleared — next round will be random");
+  const handleClearPrediction = async () => {
+    try {
+      await (supabase as any)
+        .from("admin_crash_settings")
+        .update({ consumed: true })
+        .eq("consumed", false);
+      
+      setActivePrediction(null);
+      window.dispatchEvent(new CustomEvent("admin-clear-crash-points"));
+      toast.success("Prediction cleared — next round will be random");
+    } catch (err: any) {
+      toast.error(`Failed to clear: ${err.message}`);
+    }
   };
 
   const handleCreditUser = async () => {

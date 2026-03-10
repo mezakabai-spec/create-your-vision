@@ -229,10 +229,10 @@ export function useCrashGame() {
       ch.send({ type: "broadcast", event: "phase", payload: { phase: "waiting" } });
 
       // Phase 2: Running after wait
-      const t1 = setTimeout(() => {
+      const t1 = setTimeout(async () => {
         if (!isLeaderRef.current || !mountedRef.current) return;
 
-        const cp = getNextCrashPoint();
+        const cp = await getNextCrashPoint();
         const startTime = Date.now();
 
         ch.send({ type: "broadcast", event: "phase", payload: { phase: "running", startTime } });

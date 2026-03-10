@@ -14,117 +14,105 @@ export type Database = {
   }
   public: {
     Tables: {
-      balances: {
+      price_alerts: {
         Row: {
-          amount: number
+          alert_type: string
           created_at: string
           id: string
-          updated_at: string
+          is_active: boolean | null
+          target_price: number
+          triggered_at: string | null
           user_id: string
         }
         Insert: {
-          amount?: number
+          alert_type: string
           created_at?: string
           id?: string
-          updated_at?: string
+          is_active?: boolean | null
+          target_price: number
+          triggered_at?: string | null
           user_id: string
         }
         Update: {
-          amount?: number
+          alert_type?: string
           created_at?: string
           id?: string
-          updated_at?: string
+          is_active?: boolean | null
+          target_price?: number
+          triggered_at?: string | null
           user_id?: string
-        }
-        Relationships: []
-      }
-      bet_history: {
-        Row: {
-          bet_amount: number
-          cashout_multiplier: number | null
-          crashed: boolean
-          created_at: string
-          id: string
-          profit: number
-          user_id: string
-        }
-        Insert: {
-          bet_amount: number
-          cashout_multiplier?: number | null
-          crashed?: boolean
-          created_at?: string
-          id?: string
-          profit?: number
-          user_id: string
-        }
-        Update: {
-          bet_amount?: number
-          cashout_multiplier?: number | null
-          crashed?: boolean
-          created_at?: string
-          id?: string
-          profit?: number
-          user_id?: string
-        }
-        Relationships: []
-      }
-      leaderboard_entries: {
-        Row: {
-          best_multiplier: number
-          created_at: string
-          date: string
-          id: string
-          total_winnings: number
-          user_id: string
-          username: string
-        }
-        Insert: {
-          best_multiplier: number
-          created_at?: string
-          date?: string
-          id?: string
-          total_winnings?: number
-          user_id: string
-          username: string
-        }
-        Update: {
-          best_multiplier?: number
-          created_at?: string
-          date?: string
-          id?: string
-          total_winnings?: number
-          user_id?: string
-          username?: string
         }
         Relationships: []
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
           display_name: string | null
           id: string
-          phone_number: string | null
+          notification_enabled: boolean | null
+          preferred_currency: string | null
           updated_at: string
           user_id: string
-          username: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
-          phone_number?: string | null
+          notification_enabled?: boolean | null
+          preferred_currency?: string | null
           updated_at?: string
           user_id: string
-          username?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
-          phone_number?: string | null
+          notification_enabled?: boolean | null
+          preferred_currency?: string | null
           updated_at?: string
           user_id?: string
-          username?: string | null
+        }
+        Relationships: []
+      }
+      signal_history: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          entry_price: number
+          id: string
+          result_pips: number | null
+          signal_type: string
+          status: string | null
+          stop_loss: number | null
+          target_price: number
+          user_id: string
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          entry_price: number
+          id?: string
+          result_pips?: number | null
+          signal_type: string
+          status?: string | null
+          stop_loss?: number | null
+          target_price: number
+          user_id: string
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          entry_price?: number
+          id?: string
+          result_pips?: number | null
+          signal_type?: string
+          status?: string | null
+          stop_loss?: number | null
+          target_price?: number
+          user_id?: string
         }
         Relationships: []
       }

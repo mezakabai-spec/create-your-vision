@@ -54,44 +54,32 @@ const Admin = () => {
     }
   }, [loading, checkingRole, user, isAdmin, navigate]);
 
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const { current, upcoming } = (e as CustomEvent).detail;
-      setCurrentCrashPoint(prev => {
-        if (prev !== null) {
-          setCrashHistory(h => [Math.round(prev * 100) / 100, ...h].slice(0, 50));
-        }
-        return current;
-      });
-      setNextCrashPoints(upcoming.map((v: number) => Math.round(v * 100) / 100));
-    };
-    window.addEventListener("admin-crash-point", handler);
-    return () => window.removeEventListener("admin-crash-point", handler);
-  }, []);
-
-  // Clear active prediction when game consumes it
-  useEffect(() => {
-    const handler = () => setActivePrediction(null);
-    window.addEventListener("admin-prediction-consumed", handler);
-    return () => window.removeEventListener("admin-prediction-consumed", handler);
-  }, []);
-
-  // Load active crash point from DB on mount
+  // Poll predictions from DB
   useEffect(() => {
     if (!isAdmin) return;
-    const loadActive = async () => {
+    const fetchPredictions = async () => {
       const { data } = await (supabase as any)
-        .from("admin_crash_settings")
-        .select("next_crash_point")
-        .eq("consumed", false)
-        .order("set_at", { ascending: false })
+        .from("game_predictions")
+        .select("current_crash_point, upcoming_crash_points, updated_at")
         .limit(1)
         .maybeSingle();
-      if (data?.next_crash_point) {
-        setActivePrediction(Number(data.next_crash_point));
+      if (data) {
+        if (data.current_crash_point) {
+          setCurrentCrashPoint(prev => {
+            if (prev !== null && prev !== Number(data.current_crash_point)) {
+              setCrashHistory(h => [Math.round(prev * 100) / 100, ...h].slice(0, 50));
+            }
+            return Number(data.current_crash_point);
+          });
+        }
+        if (data.upcoming_crash_points && Array.isArray(data.upcoming_crash_points)) {
+          setNextCrashPoints(data.upcoming_crash_points.map((v: number) => Math.round(v * 100) / 100));
+        }
       }
     };
-    loadActive();
+    fetchPredictions();
+    const interval = setInterval(fetchPredictions, 2000);
+    return () => clearInterval(interval);
   }, [isAdmin]);
 
   useEffect(() => {

@@ -120,12 +120,42 @@ export function useCrashGame() {
     return crashQueueRef.current.shift()!;
   };
 
-  const broadcastCrashQueue = (currentCp: number) => {
+  const broadcastCrashQueue = useCallback(async (currentCp: number) => {
     ensureCrashQueue();
+    const upcoming = crashQueueRef.current.slice(0, 5);
     window.dispatchEvent(new CustomEvent("admin-crash-point", {
-      detail: { current: currentCp, upcoming: [...crashQueueRef.current.slice(0, 5)] }
+      detail: { current: currentCp, upcoming: [...upcoming] }
     }));
-  };
+
+    // Save predictions to DB for admin panel
+    try {
+      const { data: existing } = await (supabase as any)
+        .from("game_predictions")
+        .select("id")
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        await (supabase as any)
+          .from("game_predictions")
+          .update({
+            current_crash_point: currentCp,
+            upcoming_crash_points: upcoming,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existing.id);
+      } else {
+        await (supabase as any)
+          .from("game_predictions")
+          .insert({
+            current_crash_point: currentCp,
+            upcoming_crash_points: upcoming,
+          });
+      }
+    } catch (err) {
+      console.error("[CrashGame] Failed to save predictions:", err);
+    }
+  }, []);
 
   // Save bet result to DB
   const saveBetResult = useCallback(async (bet: Bet, crashed: boolean) => {

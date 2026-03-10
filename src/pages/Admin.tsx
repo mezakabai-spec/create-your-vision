@@ -122,16 +122,16 @@ const Admin = () => {
       return;
     }
     const rounded = Math.round(val * 100) / 100;
-    setPredictionQueue(prev => [...prev, rounded]);
+    setActivePrediction(rounded);
     window.dispatchEvent(new CustomEvent("admin-set-crash-point", { detail: { crashPoint: rounded } }));
-    toast.success(`Crash point ${rounded.toFixed(2)}x queued for next round`);
+    toast.success(`Next round will crash at ${rounded.toFixed(2)}x`);
     setPredictionValue("");
   };
 
-  const handleClearPredictions = () => {
-    setPredictionQueue([]);
+  const handleClearPrediction = () => {
+    setActivePrediction(null);
     window.dispatchEvent(new CustomEvent("admin-clear-crash-points"));
-    toast.success("Prediction queue cleared");
+    toast.success("Prediction cleared — next round will be random");
   };
 
   const handleCreditUser = async () => {

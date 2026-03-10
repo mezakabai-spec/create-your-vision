@@ -300,11 +300,11 @@ const Admin = () => {
           </div>
         </div>
 
-        {/* Set Next Crash Point */}
+        {/* Correct Predictions */}
         <div className="bg-card border border-primary/30 rounded-xl p-5">
           <div className="flex items-center gap-2 mb-3">
             <TrendingUp className="w-4 h-4 text-primary" />
-            <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">Set Next Crash Point</h2>
+            <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">Correct Predictions</h2>
           </div>
           {activePrediction !== null && (
             <div className="mb-3 p-3 rounded-lg bg-primary/10 border border-primary/30">

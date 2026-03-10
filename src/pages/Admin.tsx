@@ -222,16 +222,21 @@ const Admin = () => {
             )}
           </div>
 
-          {/* Next Crash Point */}
+          {/* Next 5 Crash Points */}
           <div className="bg-card border border-gaming-gold/30 rounded-xl p-5">
             <div className="flex items-center gap-2 mb-3">
               <TrendingUp className="w-4 h-4 text-gaming-gold" />
-              <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">Next Crash Point</h2>
+              <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">Next 5 Predictions</h2>
             </div>
-            {nextCrashPoint ? (
-              <p className={`font-mono text-4xl font-bold ${getColor(nextCrashPoint)}`}>
-                {nextCrashPoint.toFixed(2)}x
-              </p>
+            {nextCrashPoints.length > 0 ? (
+              <div className="flex gap-2 flex-wrap">
+                {nextCrashPoints.map((val, i) => (
+                  <div key={i} className={`rounded-lg border px-3 py-2 text-center ${getBg(val)}`}>
+                    <p className="text-[10px] text-muted-foreground mb-0.5">#{i + 1}</p>
+                    <p className={`font-mono text-lg font-bold ${getColor(val)}`}>{val.toFixed(2)}x</p>
+                  </div>
+                ))}
+              </div>
             ) : (
               <p className="text-muted-foreground text-sm">Will appear after first round</p>
             )}

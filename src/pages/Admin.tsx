@@ -19,6 +19,8 @@ const Admin = () => {
   const [allUsers, setAllUsers] = useState<{ user_id: string; username: string; amount: number }[]>([]);
   const [creditUserId, setCreditUserId] = useState("");
   const [creditAmount, setCreditAmount] = useState("");
+  const [predictionValue, setPredictionValue] = useState("");
+  const [predictionQueue, setPredictionQueue] = useState<number[]>([]);
 
   useEffect(() => {
     if (!user) {
@@ -113,6 +115,25 @@ const Admin = () => {
     return () => clearInterval(interval);
   }, [isAdmin]);
 
+  const handleSetPrediction = () => {
+    const val = parseFloat(predictionValue);
+    if (isNaN(val) || val < 1.0) {
+      toast.error("Crash point must be at least 1.00");
+      return;
+    }
+    const rounded = Math.round(val * 100) / 100;
+    setPredictionQueue(prev => [...prev, rounded]);
+    window.dispatchEvent(new CustomEvent("admin-set-crash-point", { detail: { crashPoint: rounded } }));
+    toast.success(`Crash point ${rounded.toFixed(2)}x queued for next round`);
+    setPredictionValue("");
+  };
+
+  const handleClearPredictions = () => {
+    setPredictionQueue([]);
+    window.dispatchEvent(new CustomEvent("admin-clear-crash-points"));
+    toast.success("Prediction queue cleared");
+  };
+
   const handleCreditUser = async () => {
     if (!creditUserId || !creditAmount) {
       toast.error("Enter user ID and amount");
@@ -124,26 +145,44 @@ const Admin = () => {
       return;
     }
 
-    const { data: existing } = await supabase
-      .from("balances")
-      .select("amount")
-      .eq("user_id", creditUserId)
-      .single();
+    try {
+      const { data: existing } = await supabase
+        .from("balances")
+        .select("amount")
+        .eq("user_id", creditUserId)
+        .maybeSingle();
 
-    if (existing) {
-      await supabase
-        .from("balances")
-        .update({ amount: Number(existing.amount) + amount })
-        .eq("user_id", creditUserId);
-    } else {
-      await supabase
-        .from("balances")
-        .insert({ user_id: creditUserId, amount });
+      if (existing) {
+        const { error } = await supabase
+          .from("balances")
+          .update({ amount: Number(existing.amount) + amount })
+          .eq("user_id", creditUserId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("balances")
+          .insert({ user_id: creditUserId, amount });
+        if (error) throw error;
+      }
+
+      toast.success(`Credited KES ${amount} to user`);
+      setCreditUserId("");
+      setCreditAmount("");
+
+      // Refresh user list to show updated balance
+      const { data: profiles } = await supabase.from("profiles").select("user_id, username");
+      const { data: balances } = await supabase.from("balances").select("user_id, amount");
+      if (profiles) {
+        const balanceMap = new Map((balances || []).map(b => [b.user_id, Number(b.amount)]));
+        setAllUsers(profiles.map(p => ({
+          user_id: p.user_id,
+          username: p.username || "Unknown",
+          amount: balanceMap.get(p.user_id) || 0,
+        })));
+      }
+    } catch (err: any) {
+      toast.error(`Failed to credit: ${err.message}`);
     }
-
-    toast.success(`Credited KES ${amount} to user`);
-    setCreditUserId("");
-    setCreditAmount("");
   };
 
   if (loading || checkingRole) {
@@ -217,6 +256,43 @@ const Admin = () => {
               <p className="text-muted-foreground text-sm">Will appear after first round</p>
             )}
           </div>
+        </div>
+
+        {/* Prediction / Set Crash Point */}
+        <div className="bg-card border border-primary/30 rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">Set Next Crash Point</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+            <input
+              type="number"
+              step="0.01"
+              min="1"
+              placeholder="e.g. 1.50"
+              value={predictionValue}
+              onChange={(e) => setPredictionValue(e.target.value)}
+              className="bg-secondary border border-border rounded-lg px-3 py-2 text-foreground text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+            <Button onClick={handleSetPrediction} className="font-semibold">
+              Queue Crash Point
+            </Button>
+            <Button onClick={handleClearPredictions} variant="outline" className="font-semibold">
+              Clear Queue
+            </Button>
+          </div>
+          {predictionQueue.length > 0 && (
+            <div>
+              <p className="text-[10px] text-muted-foreground uppercase mb-2">Queued predictions:</p>
+              <div className="flex gap-2 flex-wrap">
+                {predictionQueue.map((val, i) => (
+                  <span key={i} className={`px-3 py-1.5 rounded-lg border font-mono text-sm font-bold ${getColor(val)} ${getBg(val)}`}>
+                    {val.toFixed(2)}x
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Crash History */}

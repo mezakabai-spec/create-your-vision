@@ -49,6 +49,27 @@ export function useCrashGame() {
     return Math.min(Math.max(1.0, 1 / (1 - r) * 0.97), 100);
   };
 
+  // Pre-generated queue of upcoming crash points
+  const crashQueueRef = useRef<number[]>([]);
+
+  const ensureCrashQueue = () => {
+    while (crashQueueRef.current.length < 6) {
+      crashQueueRef.current.push(generateCrashPoint());
+    }
+  };
+
+  const getNextCrashPoint = () => {
+    ensureCrashQueue();
+    return crashQueueRef.current.shift()!;
+  };
+
+  const broadcastCrashQueue = (currentCp: number) => {
+    ensureCrashQueue();
+    window.dispatchEvent(new CustomEvent("admin-crash-point", {
+      detail: { current: currentCp, upcoming: [...crashQueueRef.current.slice(0, 5)] }
+    }));
+  };
+
   // Save bet result to DB
   const saveBetResult = useCallback(async (bet: Bet, crashed: boolean) => {
     if (!user || betSavedRef.current) return;
@@ -154,11 +175,11 @@ export function useCrashGame() {
       const t1 = setTimeout(() => {
         if (!isLeaderRef.current || !mountedRef.current) return;
 
-        const cp = generateCrashPoint();
+        const cp = getNextCrashPoint();
         const startTime = Date.now();
 
         ch.send({ type: "broadcast", event: "phase", payload: { phase: "running", startTime } });
-        window.dispatchEvent(new CustomEvent("admin-crash-point", { detail: cp }));
+        broadcastCrashQueue(cp);
 
         // Leader starts its own ticker
         setGameState("running");

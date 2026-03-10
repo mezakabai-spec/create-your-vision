@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -14,7 +14,6 @@ const Admin = () => {
   const [currentCrashPoint, setCurrentCrashPoint] = useState<number | null>(null);
   const [crashHistory, setCrashHistory] = useState<number[]>([]);
   const [nextCrashPoints, setNextCrashPoints] = useState<number[]>([]);
-  const [upcomingPredictions, setUpcomingPredictions] = useState<number[]>([]);
   const [recentBets, setRecentBets] = useState<{ bet_amount: number; cashout_multiplier: number | null; crashed: boolean; profit: number; created_at: string }[]>([]);
   const [stats, setStats] = useState({ totalBets: 0, totalWagered: 0, totalProfit: 0, activeUsers: 0 });
   const [allUsers, setAllUsers] = useState<{ user_id: string; username: string; amount: number }[]>([]);
@@ -53,34 +52,16 @@ const Admin = () => {
     }
   }, [loading, checkingRole, user, isAdmin, navigate]);
 
-  const generatePredictions = useCallback(() => {
-    const predictions: number[] = [];
-    for (let i = 0; i < 10; i++) {
-      const r = Math.random();
-      const crash = Math.max(1.0, (1 / (1 - r)) * 0.97);
-      predictions.push(Math.min(Math.round(crash * 100) / 100, 100));
-    }
-    setUpcomingPredictions(predictions);
-  }, []);
-
   useEffect(() => {
     const handler = (e: Event) => {
-      const cp = (e as CustomEvent).detail;
-      // When a new crash point is revealed, the previous "next" becomes current
-      // and we log the previous current to history
+      const { current, upcoming } = (e as CustomEvent).detail;
       setCurrentCrashPoint(prev => {
         if (prev !== null) {
           setCrashHistory(h => [Math.round(prev * 100) / 100, ...h].slice(0, 50));
         }
-        return cp;
+        return current;
       });
-      // Pre-generate next 5 crash points
-      const points: number[] = [];
-      for (let i = 0; i < 5; i++) {
-        const r = Math.random();
-        points.push(Math.round(Math.min(Math.max(1.0, 1 / (1 - r) * 0.97), 100) * 100) / 100);
-      }
-      setNextCrashPoints(points);
+      setNextCrashPoints(upcoming.map((v: number) => Math.round(v * 100) / 100));
     };
     window.addEventListener("admin-crash-point", handler);
     return () => window.removeEventListener("admin-crash-point", handler);
@@ -111,7 +92,6 @@ const Admin = () => {
         .select("*", { count: "exact", head: true });
       setStats(prev => ({ ...prev, activeUsers: userCount || 0 }));
 
-      // Fetch all users with balances
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, username");
@@ -129,13 +109,9 @@ const Admin = () => {
       }
     };
     fetchData();
-    generatePredictions();
-    const interval = setInterval(() => {
-      fetchData();
-      generatePredictions();
-    }, 10000);
+    const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
-  }, [isAdmin, generatePredictions]);
+  }, [isAdmin]);
 
   const handleCreditUser = async () => {
     if (!creditUserId || !creditAmount) {
@@ -226,7 +202,7 @@ const Admin = () => {
           <div className="bg-card border border-gaming-gold/30 rounded-xl p-5">
             <div className="flex items-center gap-2 mb-3">
               <TrendingUp className="w-4 h-4 text-gaming-gold" />
-              <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">Next 5 Predictions</h2>
+              <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">Next 5 Crash Points</h2>
             </div>
             {nextCrashPoints.length > 0 ? (
               <div className="flex gap-2 flex-wrap">
@@ -292,27 +268,6 @@ const Admin = () => {
             <Button onClick={handleCreditUser} className="font-semibold">
               Credit Balance
             </Button>
-          </div>
-        </div>
-
-        {/* Upcoming Predictions */}
-        <div className="bg-card border border-border rounded-xl p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-gaming-green" />
-              <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">Next Round Results</h2>
-            </div>
-            <Button size="sm" variant="outline" onClick={generatePredictions} className="text-xs">
-              Refresh
-            </Button>
-          </div>
-          <div className="grid grid-cols-5 gap-2">
-            {upcomingPredictions.map((val, i) => (
-              <div key={i} className={`rounded-lg border p-3 text-center ${getBg(val)}`}>
-                <p className="text-[10px] text-muted-foreground mb-1">#{i + 1}</p>
-                <p className={`font-mono text-lg font-bold ${getColor(val)}`}>{val.toFixed(2)}x</p>
-              </div>
-            ))}
           </div>
         </div>
 

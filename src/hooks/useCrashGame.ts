@@ -51,6 +51,26 @@ export function useCrashGame() {
 
   // Pre-generated queue of upcoming crash points
   const crashQueueRef = useRef<number[]>([]);
+  const adminQueueRef = useRef<number[]>([]);
+
+  // Listen for admin-injected crash points
+  useEffect(() => {
+    const handleSet = (e: Event) => {
+      const { crashPoint } = (e as CustomEvent).detail;
+      adminQueueRef.current.push(crashPoint);
+      console.log("[CrashGame] Admin queued crash point:", crashPoint);
+    };
+    const handleClear = () => {
+      adminQueueRef.current = [];
+      console.log("[CrashGame] Admin cleared crash point queue");
+    };
+    window.addEventListener("admin-set-crash-point", handleSet);
+    window.addEventListener("admin-clear-crash-points", handleClear);
+    return () => {
+      window.removeEventListener("admin-set-crash-point", handleSet);
+      window.removeEventListener("admin-clear-crash-points", handleClear);
+    };
+  }, []);
 
   const ensureCrashQueue = () => {
     while (crashQueueRef.current.length < 6) {
@@ -59,6 +79,10 @@ export function useCrashGame() {
   };
 
   const getNextCrashPoint = () => {
+    // Admin-set crash points take priority
+    if (adminQueueRef.current.length > 0) {
+      return adminQueueRef.current.shift()!;
+    }
     ensureCrashQueue();
     return crashQueueRef.current.shift()!;
   };

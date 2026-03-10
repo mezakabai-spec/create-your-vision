@@ -92,6 +92,27 @@ export type Database = {
         }
         Relationships: []
       }
+      game_predictions: {
+        Row: {
+          current_crash_point: number | null
+          id: string
+          upcoming_crash_points: number[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          current_crash_point?: number | null
+          id?: string
+          upcoming_crash_points?: number[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          current_crash_point?: number | null
+          id?: string
+          upcoming_crash_points?: number[] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       leaderboard_entries: {
         Row: {
           best_multiplier: number
@@ -157,6 +178,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           display_name: string | null
+          email: string | null
           id: string
           notification_enabled: boolean | null
           preferred_currency: string | null
@@ -168,6 +190,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          email?: string | null
           id?: string
           notification_enabled?: boolean | null
           preferred_currency?: string | null
@@ -179,6 +202,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          email?: string | null
           id?: string
           notification_enabled?: boolean | null
           preferred_currency?: string | null

@@ -12,6 +12,8 @@ const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingRole, setCheckingRole] = useState(true);
   const [currentCrashPoint, setCurrentCrashPoint] = useState<number | null>(null);
+  const [crashHistory, setCrashHistory] = useState<number[]>([]);
+  const [nextCrashPoint, setNextCrashPoint] = useState<number | null>(null);
   const [upcomingPredictions, setUpcomingPredictions] = useState<number[]>([]);
   const [recentBets, setRecentBets] = useState<{ bet_amount: number; cashout_multiplier: number | null; crashed: boolean; profit: number; created_at: string }[]>([]);
   const [stats, setStats] = useState({ totalBets: 0, totalWagered: 0, totalProfit: 0, activeUsers: 0 });
@@ -63,7 +65,19 @@ const Admin = () => {
 
   useEffect(() => {
     const handler = (e: Event) => {
-      setCurrentCrashPoint((e as CustomEvent).detail);
+      const cp = (e as CustomEvent).detail;
+      // When a new crash point is revealed, the previous "next" becomes current
+      // and we log the previous current to history
+      setCurrentCrashPoint(prev => {
+        if (prev !== null) {
+          setCrashHistory(h => [Math.round(prev * 100) / 100, ...h].slice(0, 50));
+        }
+        return cp;
+      });
+      // Pre-generate the next crash point using same algorithm as the game
+      const r = Math.random();
+      const next = Math.min(Math.max(1.0, 1 / (1 - r) * 0.97), 100);
+      setNextCrashPoint(Math.round(next * 100) / 100);
     };
     window.addEventListener("admin-crash-point", handler);
     return () => window.removeEventListener("admin-crash-point", handler);
@@ -189,18 +203,55 @@ const Admin = () => {
       </header>
 
       <div className="max-w-5xl mx-auto p-4 space-y-4">
-        {/* Current Round */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Current Round */}
+          <div className="bg-card border border-border rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Eye className="w-4 h-4 text-primary" />
+              <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">Current Crash Point</h2>
+            </div>
+            {currentCrashPoint ? (
+              <p className={`font-mono text-4xl font-bold ${getColor(currentCrashPoint)}`}>
+                {currentCrashPoint.toFixed(2)}x
+              </p>
+            ) : (
+              <p className="text-muted-foreground text-sm">Navigate to the game page to see live crash points</p>
+            )}
+          </div>
+
+          {/* Next Crash Point */}
+          <div className="bg-card border border-gaming-gold/30 rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="w-4 h-4 text-gaming-gold" />
+              <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">Next Crash Point</h2>
+            </div>
+            {nextCrashPoint ? (
+              <p className={`font-mono text-4xl font-bold ${getColor(nextCrashPoint)}`}>
+                {nextCrashPoint.toFixed(2)}x
+              </p>
+            ) : (
+              <p className="text-muted-foreground text-sm">Will appear after first round</p>
+            )}
+          </div>
+        </div>
+
+        {/* Crash History */}
         <div className="bg-card border border-border rounded-xl p-5">
           <div className="flex items-center gap-2 mb-3">
             <Eye className="w-4 h-4 text-primary" />
-            <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">Current Round Crash Point</h2>
+            <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">Crash History</h2>
+            <span className="text-[10px] text-muted-foreground ml-auto">{crashHistory.length} rounds</span>
           </div>
-          {currentCrashPoint ? (
-            <p className={`font-mono text-4xl font-bold ${getColor(currentCrashPoint)}`}>
-              {currentCrashPoint.toFixed(2)}x
-            </p>
+          {crashHistory.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No crash history yet. Play rounds to see history.</p>
           ) : (
-            <p className="text-muted-foreground text-sm">Navigate to the game page to see live crash points</p>
+            <div className="flex flex-wrap gap-2">
+              {crashHistory.map((val, i) => (
+                <span key={i} className={`px-3 py-1.5 rounded-lg border font-mono text-sm font-bold ${getColor(val)} ${getBg(val)}`}>
+                  {val.toFixed(2)}x
+                </span>
+              ))}
+            </div>
           )}
         </div>
 

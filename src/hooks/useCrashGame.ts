@@ -72,6 +72,30 @@ export function useCrashGame() {
     };
   }, []);
 
+  // Check DB for admin-set crash point before each round
+  const checkAdminCrashPoint = useCallback(async (): Promise<number | null> => {
+    try {
+      const { data } = await (supabase as any)
+        .from("admin_crash_settings")
+        .select("id, next_crash_point")
+        .eq("consumed", false)
+        .order("set_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data && data.next_crash_point) {
+        // Mark as consumed
+        await (supabase as any)
+          .from("admin_crash_settings")
+          .update({ consumed: true })
+          .eq("id", data.id);
+        return Number(data.next_crash_point);
+      }
+    } catch (err) {
+      console.error("[CrashGame] Failed to check admin crash point:", err);
+    }
+    return null;
+  }, []);
+
   const ensureCrashQueue = () => {
     while (crashQueueRef.current.length < 6) {
       crashQueueRef.current.push(generateCrashPoint());

@@ -308,7 +308,7 @@ const Admin = () => {
           </div>
           {activePrediction !== null && (
             <div className="mb-3 p-3 rounded-lg bg-primary/10 border border-primary/30">
-              <p className="text-[10px] text-muted-foreground uppercase mb-1">Next round will crash at:</p>
+              <p className="text-[10px] text-muted-foreground uppercase mb-1">Next round crash prediction:</p>
               <p className={`font-mono text-2xl font-bold ${getColor(activePrediction)}`}>{activePrediction.toFixed(2)}x</p>
             </div>
           )}

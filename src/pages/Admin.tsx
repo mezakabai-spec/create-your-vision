@@ -69,6 +69,13 @@ const Admin = () => {
     return () => window.removeEventListener("admin-crash-point", handler);
   }, []);
 
+  // Clear active prediction when game consumes it
+  useEffect(() => {
+    const handler = () => setActivePrediction(null);
+    window.addEventListener("admin-prediction-consumed", handler);
+    return () => window.removeEventListener("admin-prediction-consumed", handler);
+  }, []);
+
   useEffect(() => {
     if (!isAdmin) return;
     const fetchData = async () => {

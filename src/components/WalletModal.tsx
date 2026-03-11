@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X, ArrowDownToLine, ArrowUpFromLine, Phone, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface WalletModalProps {
@@ -15,7 +16,7 @@ type Status = "idle" | "loading" | "success";
 const QUICK_AMOUNTS = [50, 100, 200, 500, 1000, 5000];
 
 const WalletModal = ({ open, onClose }: WalletModalProps) => {
-  const { balance } = useAuth();
+  const { balance, session } = useAuth();
   const [tab, setTab] = useState<Tab>("deposit");
   const [amount, setAmount] = useState("");
   const [phone, setPhone] = useState("");
@@ -46,19 +47,48 @@ const WalletModal = ({ open, onClose }: WalletModalProps) => {
     }
 
     setStatus("loading");
-    await new Promise((r) => setTimeout(r, 2500));
-    setStatus("success");
-    toast.success(
-      tab === "deposit"
-        ? `KES ${numAmount.toLocaleString()} deposited via M-Pesa!`
-        : `KES ${numAmount.toLocaleString()} withdrawal requested!`
-    );
-    setTimeout(() => {
-      setStatus("idle");
-      setAmount("");
-      setPhone("");
-      onClose();
-    }, 1500);
+
+    if (tab === "deposit") {
+      try {
+        const { data, error } = await supabase.functions.invoke("pesapal-create-order", {
+          body: { amount: numAmount, phoneNumber: phone },
+        });
+
+        if (error || !data?.success) {
+          toast.error(data?.error || "Failed to initiate deposit. Try again.");
+          setStatus("idle");
+          return;
+        }
+
+        // Open PesaPal payment page in new tab
+        if (data.redirect_url) {
+          window.open(data.redirect_url, "_blank");
+          toast.success("Payment page opened. Complete payment on M-Pesa to deposit.");
+          setStatus("success");
+          setTimeout(() => {
+            setStatus("idle");
+            setAmount("");
+            setPhone("");
+            onClose();
+          }, 2000);
+        }
+      } catch (err) {
+        console.error("Deposit error:", err);
+        toast.error("Something went wrong. Please try again.");
+        setStatus("idle");
+      }
+    } else {
+      // Withdraw flow (still simulated for now)
+      await new Promise((r) => setTimeout(r, 2500));
+      setStatus("success");
+      toast.success(`KES ${numAmount.toLocaleString()} withdrawal requested!`);
+      setTimeout(() => {
+        setStatus("idle");
+        setAmount("");
+        setPhone("");
+        onClose();
+      }, 1500);
+    }
   };
 
   const canWithdraw = balance > 0;

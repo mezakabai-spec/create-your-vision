@@ -143,6 +143,42 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_deposits: {
+        Row: {
+          amount: number
+          completed_at: string | null
+          created_at: string
+          id: string
+          merchant_reference: string
+          order_tracking_id: string
+          phone_number: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          merchant_reference: string
+          order_tracking_id: string
+          phone_number?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          merchant_reference?: string
+          order_tracking_id?: string
+          phone_number?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       price_alerts: {
         Row: {
           alert_type: string

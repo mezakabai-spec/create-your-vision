@@ -152,6 +152,13 @@ const BetControls = ({ gameState, onPlaceBet, onCashout, hasBet }: BetControlsPr
         >
           Cash Out
         </button>
+      ) : betPhase === "pending" ? (
+        <button
+          onClick={handleCancel}
+          className="w-full py-3 rounded-xl font-bold text-base uppercase tracking-wider bg-destructive/20 text-destructive border border-destructive/30 transition-all hover:bg-destructive/30 active:scale-[0.98] flex items-center justify-center gap-1.5"
+        >
+          <X className="w-4 h-4" /> Cancel Bet
+        </button>
       ) : betPhase === "queued" ? (
         <div className="space-y-1.5">
           <div className="bg-gaming-green/10 border border-gaming-green/30 rounded-xl p-3 text-center space-y-0.5">

@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.admin-credit-user]
 verify_jwt = false
+
+[functions.pesapal-create-order]
+verify_jwt = false
+
+[functions.pesapal-ipn]
+verify_jwt = false

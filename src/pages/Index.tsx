@@ -37,6 +37,7 @@ const Index = () => {
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       <GameHeader />
+      <LiveWithdrawals />
       <CrashHistory history={crashHistory} />
 
       {/* Main game area */}

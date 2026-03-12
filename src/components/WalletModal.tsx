@@ -22,6 +22,7 @@ const WalletModal = ({ open, onClose }: WalletModalProps) => {
   const [amount, setAmount] = useState("");
   const [phone, setPhone] = useState("");
   const [status, setStatus] = useState<Status>("idle");
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   if (!open) return null;
 

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import TermsAndConditions from "@/components/TermsAndConditions";
 
 interface WalletModalProps {
   open: boolean;

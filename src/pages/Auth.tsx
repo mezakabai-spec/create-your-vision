@@ -4,6 +4,7 @@ import { Rocket, Phone, Eye, EyeOff, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import TermsAndConditions from "@/components/TermsAndConditions";
 
 const checkIsAdmin = async (userId: string): Promise<boolean> => {
   const { data } = await (supabase as any)
@@ -30,12 +31,17 @@ const Auth = () => {
   const [referralCode, setReferralCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phone || phone.length < 10) {
       toast.error("Enter a valid phone number");
+      return;
+    }
+    if (mode === "signup" && !termsAccepted) {
+      toast.error("You must accept the Terms & Conditions to create an account");
       return;
     }
     setLoading(true);
@@ -66,7 +72,8 @@ const Auth = () => {
             username,
             display_name: username,
             phone_number: phone,
-          });
+            terms_accepted: true,
+          } as any);
           await supabase.from("balances").insert({
             user_id: userId,
             amount: 0,
@@ -94,7 +101,7 @@ const Auth = () => {
           <div className="w-14 h-14 rounded-xl bg-primary flex items-center justify-center glow-primary">
             <Rocket className="w-7 h-7 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">mozzatbet</h1>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">bronzebet</h1>
           <p className="text-sm text-muted-foreground">
             {mode === "login" ? "Welcome back! Sign in to play." : "Create your account to start playing."}
           </p>
@@ -165,7 +172,15 @@ const Auth = () => {
             </div>
           </div>
 
-          <Button type="submit" disabled={loading} className="w-full py-3 text-sm font-bold uppercase tracking-wider">
+          {mode === "signup" && (
+            <TermsAndConditions accepted={termsAccepted} onAcceptChange={setTermsAccepted} />
+          )}
+
+          <Button
+            type="submit"
+            disabled={loading || (mode === "signup" && !termsAccepted)}
+            className="w-full py-3 text-sm font-bold uppercase tracking-wider"
+          >
             {loading ? "Please wait..." : mode === "login" ? "Sign In" : "Create Account"}
           </Button>
         </form>

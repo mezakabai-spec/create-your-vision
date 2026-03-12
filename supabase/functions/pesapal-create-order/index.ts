@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
       id: merchantRef,
       currency: "KES",
       amount: Number(amount),
-      description: "MozzatBet Deposit",
+      description: "BronzeBet Deposit",
       callback_url: callbackUrl,
       redirect_mode: "",
       notification_id: ipnId,

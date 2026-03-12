@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
     const ipnId = await registerIPN(pesapalToken, ipnUrl);
 
     // Generate unique merchant reference
-    const merchantRef = `mzbt-${user.id.slice(0, 8)}-${Date.now()}`;
+    const merchantRef = `brbt-${user.id.slice(0, 8)}-${Date.now()}`;
 
     // Get user email from profile
     const { data: profile } = await supabase
@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
       id: merchantRef,
       currency: "KES",
       amount: Number(amount),
-      description: "MozzatBet Deposit",
+      description: "BronzeBet Deposit",
       callback_url: callbackUrl,
       redirect_mode: "",
       notification_id: ipnId,

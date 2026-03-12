@@ -37,7 +37,7 @@ const GameHeader = () => {
             <Rocket className="w-5 h-5 text-primary-foreground" />
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-bold text-foreground tracking-tight">mozzatbet</span>
+            <span className="text-sm font-bold text-foreground tracking-tight">bronzebet</span>
             <span className="text-[10px] text-muted-foreground leading-none">Provably Fair</span>
           </div>
         </div>

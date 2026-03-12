@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.pesapal-ipn]
 verify_jwt = false
+
+[functions.pesapal-payment-callback]
+verify_jwt = false

@@ -108,8 +108,8 @@ Deno.serve(async (req) => {
           PartyB: MPESA_SHORTCODE,
           PhoneNumber: formattedPhone,
           CallBackURL: callbackUrl,
-          AccountReference: `mozzatbet-${user.id.slice(0, 8)}`,
-          TransactionDesc: "Deposit to mozzatbet",
+          AccountReference: `bronzebet-${user.id.slice(0, 8)}`,
+          TransactionDesc: "Deposit to bronzebet",
         }),
       }
     );

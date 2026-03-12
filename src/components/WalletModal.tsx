@@ -235,9 +235,13 @@ const WalletModal = ({ open, onClose }: WalletModalProps) => {
               />
             </div>
 
+            {tab === "deposit" && (
+              <TermsAndConditions accepted={termsAccepted} onAcceptChange={setTermsAccepted} />
+            )}
+
             <Button
               type="submit"
-              disabled={status === "loading"}
+              disabled={status === "loading" || (tab === "deposit" && !termsAccepted)}
               className="w-full py-3 text-sm font-bold uppercase tracking-wider"
             >
               {status === "loading" ? (

@@ -78,6 +78,7 @@ const AuthSheet = ({ open, onClose }: AuthSheetProps) => {
             username,
             display_name: username,
             phone_number: phone,
+            terms_accepted: true,
           });
           await supabase.from("balances").insert({
             user_id: userId,

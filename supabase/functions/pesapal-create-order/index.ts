@@ -7,7 +7,26 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const PESAPAL_BASE_URL = Deno.env.get("PESAPAL_BASE_URL") || "https://pay.pesapal.com/v3";
+const PESAPAL_BASE_URL = "https://pay.pesapal.com/v3";
+
+const parseJsonResponse = async (res: Response, context: string) => {
+  const contentType = (res.headers.get("content-type") || "").toLowerCase();
+  const rawBody = await res.text();
+
+  if (!res.ok) {
+    throw new Error(`${context} failed (${res.status}): ${rawBody.slice(0, 300)}`);
+  }
+
+  if (!contentType.includes("application/json")) {
+    throw new Error(`${context} returned non-JSON response: ${rawBody.slice(0, 300)}`);
+  }
+
+  try {
+    return JSON.parse(rawBody);
+  } catch {
+    throw new Error(`${context} returned invalid JSON: ${rawBody.slice(0, 300)}`);
+  }
+};
 
 async function getAuthToken(consumerKey: string, consumerSecret: string): Promise<string> {
   const res = await fetch(`${PESAPAL_BASE_URL}/api/Auth/RequestToken`, {
@@ -15,21 +34,34 @@ async function getAuthToken(consumerKey: string, consumerSecret: string): Promis
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({ consumer_key: consumerKey, consumer_secret: consumerSecret }),
   });
-  const data = await res.json();
-  if (!data.token) throw new Error("Failed to get PesaPal auth token");
+
+  const data = await parseJsonResponse(res, "PesaPal auth token request");
+
+  if (!data?.token) {
+    throw new Error("PesaPal auth response did not include token");
+  }
+
   return data.token;
 }
 
 async function registerIPN(token: string, ipnUrl: string): Promise<string> {
-  // First check if IPN already registered
-  const listRes = await fetch(`${PESAPAL_BASE_URL}/api/URLSetup/GetIpnList`, {
-    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-  });
-  const ipns = await listRes.json();
-  
-  if (Array.isArray(ipns)) {
-    const existing = ipns.find((i: any) => i.url === ipnUrl && i.ipn_notification_type === "GET");
-    if (existing) return existing.ipn_id;
+  try {
+    const listRes = await fetch(`${PESAPAL_BASE_URL}/api/URLSetup/GetIpnList`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    });
+
+    if (listRes.ok) {
+      const ipns = await parseJsonResponse(listRes, "PesaPal IPN list request");
+      if (Array.isArray(ipns)) {
+        const existing = ipns.find((i: any) => i.url === ipnUrl && i.ipn_notification_type === "GET");
+        if (existing?.ipn_id) return existing.ipn_id;
+      }
+    } else {
+      const body = await listRes.text();
+      console.warn("PesaPal GetIpnList failed, registering new IPN:", body.slice(0, 200));
+    }
+  } catch (error) {
+    console.warn("PesaPal GetIpnList parse failed, registering new IPN:", error);
   }
 
   const res = await fetch(`${PESAPAL_BASE_URL}/api/URLSetup/RegisterIPN`, {
@@ -44,8 +76,12 @@ async function registerIPN(token: string, ipnUrl: string): Promise<string> {
       ipn_notification_type: "GET",
     }),
   });
-  const data = await res.json();
-  if (!data.ipn_id) throw new Error("Failed to register IPN URL");
+
+  const data = await parseJsonResponse(res, "PesaPal IPN registration");
+  if (!data?.ipn_id) {
+    throw new Error("PesaPal IPN registration response did not include ipn_id");
+  }
+
   return data.ipn_id;
 }
 
@@ -67,7 +103,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verify auth
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -78,7 +113,10 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
       return new Response(
@@ -88,43 +126,38 @@ Deno.serve(async (req) => {
     }
 
     const { amount, phoneNumber } = await req.json();
+    const parsedAmount = Number(amount);
 
-    if (!amount || amount < 10) {
+    if (!Number.isFinite(parsedAmount) || parsedAmount < 10) {
       return new Response(
         JSON.stringify({ error: "Minimum deposit is KES 10" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Get PesaPal auth token
     const pesapalToken = await getAuthToken(CONSUMER_KEY, CONSUMER_SECRET);
 
-    // Register IPN callback URL
     const ipnUrl = `${SUPABASE_URL}/functions/v1/pesapal-ipn`;
     const ipnId = await registerIPN(pesapalToken, ipnUrl);
 
-    // Generate unique merchant reference
     const merchantRef = `brbt-${user.id.slice(0, 8)}-${Date.now()}`;
 
-    // Get user email from profile
     const { data: profile } = await supabase
       .from("profiles")
       .select("email, display_name")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
-    // Format phone for PesaPal (254XXXXXXXXX)
     let formattedPhone = phoneNumber?.replace(/\s+/g, "").replace(/^0/, "254").replace(/^\+/, "") || "";
     if (formattedPhone && !formattedPhone.startsWith("254")) {
       formattedPhone = "254" + formattedPhone;
     }
 
-    // Submit order
     const callbackUrl = `${SUPABASE_URL}/functions/v1/pesapal-payment-callback`;
     const orderPayload = {
       id: merchantRef,
       currency: "KES",
-      amount: Number(amount),
+      amount: parsedAmount,
       description: "BronzeBet Deposit",
       callback_url: callbackUrl,
       redirect_mode: "",
@@ -144,8 +177,6 @@ Deno.serve(async (req) => {
       },
     };
 
-    console.log("Submitting PesaPal order:", JSON.stringify(orderPayload));
-
     const orderRes = await fetch(`${PESAPAL_BASE_URL}/api/Transactions/SubmitOrderRequest`, {
       method: "POST",
       headers: {
@@ -156,25 +187,27 @@ Deno.serve(async (req) => {
       body: JSON.stringify(orderPayload),
     });
 
-    const orderData = await orderRes.json();
-    console.log("PesaPal order response:", JSON.stringify(orderData));
+    const orderData = await parseJsonResponse(orderRes, "PesaPal submit order request");
 
-    if (!orderData.order_tracking_id || !orderData.redirect_url) {
+    if (!orderData?.order_tracking_id || !orderData?.redirect_url) {
       return new Response(
         JSON.stringify({ error: "Failed to create payment order", details: orderData }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Save pending deposit
-    await supabase.from("pending_deposits").insert({
+    const { error: pendingInsertError } = await supabase.from("pending_deposits").insert({
       user_id: user.id,
       order_tracking_id: orderData.order_tracking_id,
       merchant_reference: merchantRef,
-      amount: Number(amount),
+      amount: parsedAmount,
       phone_number: formattedPhone,
       status: "pending",
     });
+
+    if (pendingInsertError) {
+      throw new Error(`Failed to store pending deposit: ${pendingInsertError.message}`);
+    }
 
     return new Response(
       JSON.stringify({
@@ -186,9 +219,10 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     console.error("PesaPal order error:", error);
-    return new Response(
-      JSON.stringify({ error: error.message || "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

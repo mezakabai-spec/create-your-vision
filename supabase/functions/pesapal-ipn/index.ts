@@ -7,7 +7,26 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const PESAPAL_BASE_URL = Deno.env.get("PESAPAL_BASE_URL") || "https://pay.pesapal.com/v3";
+const PESAPAL_BASE_URL = "https://pay.pesapal.com/v3";
+
+const parseJsonResponse = async (res: Response, context: string) => {
+  const contentType = (res.headers.get("content-type") || "").toLowerCase();
+  const rawBody = await res.text();
+
+  if (!res.ok) {
+    throw new Error(`${context} failed (${res.status}): ${rawBody.slice(0, 300)}`);
+  }
+
+  if (!contentType.includes("application/json")) {
+    throw new Error(`${context} returned non-JSON response: ${rawBody.slice(0, 300)}`);
+  }
+
+  try {
+    return JSON.parse(rawBody);
+  } catch {
+    throw new Error(`${context} returned invalid JSON: ${rawBody.slice(0, 300)}`);
+  }
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -21,73 +40,73 @@ Deno.serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // PesaPal sends IPN as GET with query params
     const url = new URL(req.url);
     const orderTrackingId = url.searchParams.get("OrderTrackingId");
     const merchantReference = url.searchParams.get("OrderMerchantReference");
-    const notificationType = url.searchParams.get("OrderNotificationType");
+    const notificationType = url.searchParams.get("OrderNotificationType") || "IPNCHANGE";
 
-    console.log(`PesaPal IPN received: trackingId=${orderTrackingId}, ref=${merchantReference}, type=${notificationType}`);
+    console.log(
+      `PesaPal IPN received: trackingId=${orderTrackingId}, ref=${merchantReference}, type=${notificationType}`
+    );
 
     if (!orderTrackingId) {
-      return new Response(JSON.stringify({ orderNotificationType: "IPNCHANGE", orderTrackingId: "", orderMerchantReference: "", status: 400 }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          orderNotificationType: notificationType,
+          orderTrackingId: "",
+          orderMerchantReference: merchantReference || "",
+          status: 400,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // Get auth token to query transaction status
     const authRes = await fetch(`${PESAPAL_BASE_URL}/api/Auth/RequestToken`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({ consumer_key: CONSUMER_KEY, consumer_secret: CONSUMER_SECRET }),
     });
-    const authData = await authRes.json();
-    const pesapalToken = authData.token;
+
+    const authData = await parseJsonResponse(authRes, "PesaPal auth token request (IPN)");
+    const pesapalToken = authData?.token;
 
     if (!pesapalToken) {
-      console.error("Failed to get PesaPal token for status check");
-      return new Response(JSON.stringify({ status: 500 }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      throw new Error("PesaPal auth response did not include token");
     }
 
-    // Get transaction status
     const statusRes = await fetch(
-      `${PESAPAL_BASE_URL}/api/Transactions/GetTransactionStatus?orderTrackingId=${orderTrackingId}`,
+      `${PESAPAL_BASE_URL}/api/Transactions/GetTransactionStatus?orderTrackingId=${encodeURIComponent(
+        orderTrackingId
+      )}`,
       {
         headers: { Authorization: `Bearer ${pesapalToken}`, Accept: "application/json" },
       }
     );
-    const statusData = await statusRes.json();
+
+    const statusData = await parseJsonResponse(statusRes, "PesaPal transaction status request");
+    const statusCode = Number(statusData?.status_code);
     console.log("Transaction status:", JSON.stringify(statusData));
 
-    // status_code: 0 = Invalid, 1 = Completed, 2 = Failed, 3 = Reversed
-    if (statusData.status_code === 1) {
-      // Payment completed - find pending deposit
+    if (statusCode === 1) {
       const { data: deposit } = await supabase
         .from("pending_deposits")
         .select("*")
         .eq("order_tracking_id", orderTrackingId)
         .eq("status", "pending")
-        .single();
+        .maybeSingle();
 
       if (deposit) {
-        // Credit balance
         const { data: balance } = await supabase
           .from("balances")
           .select("amount")
           .eq("user_id", deposit.user_id)
-          .single();
+          .maybeSingle();
 
         if (balance) {
           const newAmount = Number(balance.amount) + Number(deposit.amount);
-          await supabase
-            .from("balances")
-            .update({ amount: newAmount })
-            .eq("user_id", deposit.user_id);
+          await supabase.from("balances").update({ amount: newAmount }).eq("user_id", deposit.user_id);
           console.log(`Credited KES ${deposit.amount} to user ${deposit.user_id}. New balance: ${newAmount}`);
         } else {
-          // Create balance record
           await supabase.from("balances").insert({
             user_id: deposit.user_id,
             amount: Number(deposit.amount),
@@ -95,7 +114,6 @@ Deno.serve(async (req) => {
           console.log(`Created balance with KES ${deposit.amount} for user ${deposit.user_id}`);
         }
 
-        // Mark deposit as completed
         await supabase
           .from("pending_deposits")
           .update({ status: "completed", completed_at: new Date().toISOString() })
@@ -103,8 +121,7 @@ Deno.serve(async (req) => {
       } else {
         console.log("No pending deposit found for tracking ID:", orderTrackingId);
       }
-    } else if (statusData.status_code === 2 || statusData.status_code === 3) {
-      // Failed or reversed
+    } else if (statusCode === 2 || statusCode === 3) {
       await supabase
         .from("pending_deposits")
         .update({ status: "failed" })
@@ -122,8 +139,10 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     console.error("PesaPal IPN error:", error);
-    return new Response(JSON.stringify({ status: 500 }), {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return new Response(JSON.stringify({ status: 500, error: message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
     });
   }
 });

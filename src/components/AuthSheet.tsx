@@ -5,6 +5,7 @@ import { Rocket, Phone, Eye, EyeOff, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import TermsAndConditions from "@/components/TermsAndConditions";
 
 const checkIsAdmin = async (userId: string): Promise<boolean> => {
   const { data } = await (supabase as any)

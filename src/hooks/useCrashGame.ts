@@ -182,7 +182,7 @@ export function useCrashGame() {
           .from("balances")
           .select("amount")
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
         if (balanceData) {
           await supabase
             .from("balances")

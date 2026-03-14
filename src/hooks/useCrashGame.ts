@@ -434,7 +434,7 @@ export function useCrashGame() {
         .from("balances")
         .select("amount")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
       if (balanceData) {
         const newBalance = Number(balanceData.amount) - amount;
         if (newBalance < 0) return;

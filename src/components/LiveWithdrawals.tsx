@@ -58,7 +58,7 @@ const LiveWithdrawals = () => {
     <div className="flex items-center gap-2 overflow-x-auto px-4 py-2 scrollbar-none border-b border-border bg-card/50">
       <div className="flex items-center gap-1.5 shrink-0">
         <ArrowUpFromLine className="w-3 h-3 text-gaming-green" />
-        <span className="text-[10px] text-gaming-green font-semibold uppercase tracking-wider">Live</span>
+        <span className="text-[10px] text-gaming-green font-semibold uppercase tracking-wider">Live Withdrawals</span>
       </div>
       <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
         {withdrawals.map((w) => (

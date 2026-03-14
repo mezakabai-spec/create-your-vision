@@ -57,8 +57,8 @@ const Profile = () => {
 
   const handleDeposit = async () => {
     const amount = Number(depositAmount);
-    if (amount < 10) {
-      toast.error("Minimum deposit is KES 10");
+    if (amount < 100) {
+      toast.error("Minimum deposit is KES 100");
       return;
     }
     if (!phoneNumber || phoneNumber.length < 9) {

@@ -128,9 +128,9 @@ Deno.serve(async (req) => {
     const { amount, phoneNumber } = await req.json();
     const parsedAmount = Number(amount);
 
-    if (!Number.isFinite(parsedAmount) || parsedAmount < 10) {
+    if (!Number.isFinite(parsedAmount) || parsedAmount < 100) {
       return new Response(
-        JSON.stringify({ error: "Minimum deposit is KES 10" }),
+        JSON.stringify({ error: "Minimum deposit is KES 100" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

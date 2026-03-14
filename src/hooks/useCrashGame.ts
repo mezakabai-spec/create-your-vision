@@ -194,7 +194,7 @@ export function useCrashGame() {
           .from("profiles")
           .select("username")
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
         const username = profile?.username || "Player";
         const today = new Date().toISOString().split("T")[0];
 

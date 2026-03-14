@@ -215,8 +215,8 @@ const WalletModal = ({ open, onClose }: WalletModalProps) => {
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 required
-                min={10}
-                placeholder="Enter amount"
+                min={100}
+                placeholder="Enter amount (min 100)"
                 className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
